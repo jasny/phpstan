@@ -752,12 +752,6 @@ class Scope implements ClassMemberAccessAnswerer
 			|| $node instanceof Expr\BinaryOp\ShiftLeft
 			|| $node instanceof Expr\AssignOp\ShiftRight
 			|| $node instanceof Expr\BinaryOp\ShiftRight
-			|| $node instanceof Expr\AssignOp\BitwiseAnd
-			|| $node instanceof Expr\BinaryOp\BitwiseAnd
-			|| $node instanceof Expr\AssignOp\BitwiseOr
-			|| $node instanceof Expr\BinaryOp\BitwiseOr
-			|| $node instanceof Expr\AssignOp\BitwiseXor
-			|| $node instanceof Expr\BinaryOp\BitwiseXor
 		) {
 			if ($node instanceof Node\Expr\AssignOp) {
 				$left = $node->var;
@@ -775,6 +769,45 @@ class Scope implements ClassMemberAccessAnswerer
 			}
 
 			return new IntegerType();
+		}
+
+		if (
+			$node instanceof Expr\AssignOp\BitwiseAnd
+			|| $node instanceof Expr\BinaryOp\BitwiseAnd
+			|| $node instanceof Expr\AssignOp\BitwiseOr
+			|| $node instanceof Expr\BinaryOp\BitwiseOr
+			|| $node instanceof Expr\AssignOp\BitwiseXor
+			|| $node instanceof Expr\BinaryOp\BitwiseXor
+		) {
+			if ($node instanceof Node\Expr\AssignOp) {
+				$left = $node->var;
+				$right = $node->expr;
+			} else {
+				$left = $node->left;
+				$right = $node->right;
+			}
+
+			$possibleTypes = [];
+
+			if (!TrinaryLogic::createYes()->and(
+				$this->getType($left)->isSuperTypeOf(new StringType()),
+				$this->getType($right)->isSuperTypeOf(new StringType())
+			)->no()) {
+				$possibleTypes[] = new StringType();
+			}
+
+			if (!TypeCombinator::union(
+				$this->getType($left)->toNumber(),
+				$this->getType($right)->toNumber()
+			) instanceof ErrorType) {
+				$possibleTypes[] = new IntegerType();
+			}
+
+			if ($possibleTypes === []) {
+				$possibleTypes[] = new ErrorType();
+			}
+
+			return TypeCombinator::union(...$possibleTypes);
 		}
 
 		if (
@@ -1450,64 +1483,71 @@ class Scope implements ClassMemberAccessAnswerer
 			return $this->getTypeFromValue($leftValue <=> $rightValue);
 		}
 
-		$leftNumberType = $leftType->toNumber();
-		$rightNumberType = $rightType->toNumber();
-		if (TypeCombinator::union($leftNumberType, $rightNumberType) instanceof ErrorType) {
-			return new ErrorType();
+		if (
+			!$leftType instanceof StringType || !$rightType instanceof StringType ||
+			!(
+				$node instanceof Expr\BinaryOp\BitwiseAnd || $node instanceof Expr\AssignOp\BitwiseAnd ||
+				$node instanceof Expr\BinaryOp\BitwiseAnd || $node instanceof Expr\AssignOp\BitwiseAnd ||
+				$node instanceof Expr\BinaryOp\BitwiseXor || $node instanceof Expr\AssignOp\BitwiseXor
+			)
+		) {
+			$leftNumberType = $leftType->toNumber();
+			$rightNumberType = $rightType->toNumber();
+
+			if (TypeCombinator::union($leftNumberType, $rightNumberType) instanceof ErrorType) {
+				return new ErrorType();
+			}
+
+			if (!$leftNumberType instanceof ConstantScalarType || !$rightNumberType instanceof ConstantScalarType) {
+				throw new \PHPStan\ShouldNotHappenException();
+			}
+
+            $leftValue = $leftNumberType->getValue();
+            $rightValue = $rightNumberType->getValue();
 		}
-
-		if (!$leftNumberType instanceof ConstantScalarType || !$rightNumberType instanceof ConstantScalarType) {
-			throw new \PHPStan\ShouldNotHappenException();
-		}
-
-		/** @var float|int $leftNumberValue */
-		$leftNumberValue = $leftNumberType->getValue();
-
-		/** @var float|int $rightNumberValue */
-		$rightNumberValue = $rightNumberType->getValue();
 
 		if ($node instanceof Node\Expr\BinaryOp\Plus || $node instanceof Node\Expr\AssignOp\Plus) {
-			return $this->getTypeFromValue($leftNumberValue + $rightNumberValue);
+			return $this->getTypeFromValue($leftValue + $rightValue);
 		}
 
 		if ($node instanceof Node\Expr\BinaryOp\Minus || $node instanceof Node\Expr\AssignOp\Minus) {
-			return $this->getTypeFromValue($leftNumberValue - $rightNumberValue);
+			return $this->getTypeFromValue($leftValue - $rightValue);
 		}
 
 		if ($node instanceof Node\Expr\BinaryOp\Mul || $node instanceof Node\Expr\AssignOp\Mul) {
-			return $this->getTypeFromValue($leftNumberValue * $rightNumberValue);
+			return $this->getTypeFromValue($leftValue * $rightValue);
 		}
 
 		if ($node instanceof Node\Expr\BinaryOp\Pow || $node instanceof Node\Expr\AssignOp\Pow) {
-			return $this->getTypeFromValue($leftNumberValue ** $rightNumberValue);
+			return $this->getTypeFromValue($leftValue ** $rightValue);
 		}
 
 		if ($node instanceof Node\Expr\BinaryOp\Div || $node instanceof Node\Expr\AssignOp\Div) {
-			return $this->getTypeFromValue($leftNumberValue / $rightNumberValue);
+			return $this->getTypeFromValue($leftValue / $rightValue);
 		}
 
 		if ($node instanceof Node\Expr\BinaryOp\Mod || $node instanceof Node\Expr\AssignOp\Mod) {
-			return $this->getTypeFromValue($leftNumberValue % $rightNumberValue);
+			return $this->getTypeFromValue($leftValue % $rightValue);
 		}
 
 		if ($node instanceof Expr\BinaryOp\ShiftLeft || $node instanceof Expr\AssignOp\ShiftLeft) {
-			return $this->getTypeFromValue($leftNumberValue << $rightNumberValue);
+			return $this->getTypeFromValue($leftValue << $rightValue);
 		}
 
 		if ($node instanceof Expr\BinaryOp\ShiftRight || $node instanceof Expr\AssignOp\ShiftRight) {
-			return $this->getTypeFromValue($leftNumberValue >> $rightNumberValue);
+			return $this->getTypeFromValue($leftValue >> $rightValue);
 		}
 
 		if ($node instanceof Expr\BinaryOp\BitwiseAnd || $node instanceof Expr\AssignOp\BitwiseAnd) {
-			return $this->getTypeFromValue($leftNumberValue & $rightNumberValue);
+			return $this->getTypeFromValue($leftValue & $rightValue);
 		}
 
 		if ($node instanceof Expr\BinaryOp\BitwiseOr || $node instanceof Expr\AssignOp\BitwiseOr) {
-			return $this->getTypeFromValue($leftNumberValue | $rightNumberValue);
+			return $this->getTypeFromValue($leftValue | $rightValue);
 		}
 
 		if ($node instanceof Expr\BinaryOp\BitwiseXor || $node instanceof Expr\AssignOp\BitwiseXor) {
-			return $this->getTypeFromValue($leftNumberValue ^ $rightNumberValue);
+			return $this->getTypeFromValue($leftValue ^ $rightValue);
 		}
 
 		return new MixedType();

@@ -79,32 +79,36 @@ class InvalidBinaryOperationRuleTest extends \PHPStan\Testing\RuleTestCase
 				71,
 			],
 			[
-				'Binary operation "." between string and stdClass results in an error.',
-				81,
+				'Binary operation "&" between int and \'a\' results in an error.',
+				74,
 			],
 			[
-				'Binary operation ".=" between string and stdClass results in an error.',
+				'Binary operation "." between string and stdClass results in an error.',
 				85,
 			],
 			[
+				'Binary operation ".=" between string and stdClass results in an error.',
+				89,
+			],
+			[
 				'Binary operation "/" between 5 and 0|1 results in an error.',
-				116,
+				120,
 			],
 			[
 				'Binary operation "." between array and \'xyz\' results in an error.',
-				121,
+				125,
 			],
 			[
 				'Binary operation "." between array|string and \'xyz\' results in an error.',
-				128,
+				132,
 			],
 			[
 				'Binary operation "+" between (array|string) and 1 results in an error.',
-				130,
+				134,
 			],
 			[
 				'Binary operation "+" between stdClass and int results in an error.',
-				151,
+				155,
 			],
 		]);
 	}

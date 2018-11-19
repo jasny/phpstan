@@ -69,6 +69,10 @@ function (
 	$string | 5;
 	$int ^ 5;
 	$string ^ 5;
+	$int & '5';
+	$string & '5';
+	$int & 'a';
+	$string & 'a';
 };
 
 function (
@@ -147,6 +151,6 @@ function (array $a) {
 };
 
 function (stdClass $ob, int $n) {
-    $ob == $n;
-    $ob + $n;
+	$ob == $n;
+	$ob + $n;
 };

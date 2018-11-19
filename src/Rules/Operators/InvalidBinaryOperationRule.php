@@ -5,7 +5,9 @@ namespace PHPStan\Rules\Operators;
 use PhpParser\Node;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\RuleLevelHelper;
+use PHPStan\TrinaryLogic;
 use PHPStan\Type\ErrorType;
+use PHPStan\Type\StringType;
 use PHPStan\Type\Type;
 use PHPStan\Type\VerbosityLevel;
 
@@ -30,6 +32,33 @@ class InvalidBinaryOperationRule implements \PHPStan\Rules\Rule
 	public function getNodeType(): string
 	{
 		return Node\Expr::class;
+	}
+
+	private function getTypeCallback(\PhpParser\Node $node, TrinaryLogic $bitwiseAscii): \Closure
+	{
+		if ($node instanceof Node\Expr\AssignOp\Concat || $node instanceof Node\Expr\BinaryOp\Concat) {
+			return static function (Type $type): bool {
+				return !$type->toString() instanceof ErrorType;
+			};
+		}
+
+		if (
+			$node instanceof Node\Expr\AssignOp\BitwiseAnd ||
+			$node instanceof Node\Expr\AssignOp\BitwiseOr ||
+			$node instanceof Node\Expr\AssignOp\BitwiseXor ||
+			$node instanceof Node\Expr\BinaryOp\BitwiseAnd ||
+			$node instanceof Node\Expr\BinaryOp\BitwiseOr ||
+			$node instanceof Node\Expr\BinaryOp\BitwiseXor
+		) {
+			return static function (Type $type) use ($bitwiseAscii): bool {
+				return (!$bitwiseAscii->no() && $type->isSuperTypeOf(new StringType()))
+					|| (!$bitwiseAscii->yes() && !$type->toNumber() instanceof ErrorType);
+			};
+		}
+
+		return static function (Type $type): bool {
+			return !$type->toNumber() instanceof ErrorType;
+		};
 	}
 
 	/**
@@ -65,31 +94,26 @@ class InvalidBinaryOperationRule implements \PHPStan\Rules\Rule
 				$newNode->right = $rightVariable;
 			}
 
-			if ($node instanceof Node\Expr\AssignOp\Concat || $node instanceof Node\Expr\BinaryOp\Concat) {
-				$callback = static function (Type $type): bool {
-					return !$type->toString() instanceof ErrorType;
-				};
-			} else {
-				$callback = static function (Type $type): bool {
-					return !$type->toNumber() instanceof ErrorType;
-				};
-			}
-
 			$leftType = $this->ruleLevelHelper->findTypeToCheck(
 				$scope,
 				$left,
 				'',
-				$callback
+				$this->getTypeCallback($node, TrinaryLogic::createMaybe())
 			)->getType();
 			if ($leftType instanceof ErrorType) {
 				return [];
 			}
 
+			$bitwiseAscii = TrinaryLogic::extremeIdentity(
+				$leftType->isSuperTypeOf(new StringType()),
+				TrinaryLogic::createFromBoolean($leftType->toNumber() instanceof ErrorType)
+			);
+
 			$rightType = $this->ruleLevelHelper->findTypeToCheck(
 				$scope,
 				$right,
 				'',
-				$callback
+				$callback = $this->getTypeCallback($node, $bitwiseAscii)
 			)->getType();
 			if ($rightType instanceof ErrorType) {
 				return [];

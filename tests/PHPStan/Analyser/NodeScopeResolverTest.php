@@ -2674,6 +2674,18 @@ class NodeScopeResolverTest extends \PHPStan\Testing\TestCase
 				'*ERROR*',
 				'"bla" & 3',
 			],
+            [
+                'string',
+                '$string & "bla"',
+            ],
+            [
+                '\'bab\'',
+                '\'foo\' & \'bar\'',
+            ],
+            [
+                '\'020\'',
+                '\'872\' & \'621\'',
+            ],
 			[
 				'7',
 				'5 | 3',

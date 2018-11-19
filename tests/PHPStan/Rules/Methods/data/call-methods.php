@@ -1060,3 +1060,30 @@ class ArrayOrNullCastToArray
 	}
 
 }
+
+class ArrayObjectTypehint
+{
+
+    /**
+     * @return object
+     */
+    private function getObject($i)
+    {
+
+    }
+
+    /**
+     * @param DateTime[] $dates
+     */
+    public function dateObjects(array $dates)
+    {
+        for ($i = 1; $i <= 10; ++$i) {
+            $dates[] = $this->getObject($i);
+        }
+
+        foreach ($dates as $date) {
+            $date->format('Y');
+        }
+    }
+
+}
